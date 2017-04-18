@@ -1,0 +1,3 @@
+// rename to settings.h and edit accordingly....
+#define SETTINGS_THINGSPEAK_KEY "----"
+#define SETTINGS_THINGSPEAK_CHANNEL 1111
