@@ -30,33 +30,35 @@ double temp;
 double humd;
 double pres;
 
-void setup() {
-    // put your setup code here, to run once:
-    Serial.begin(115200);
-    WiFiManager wifiManager;
-    //reset saved settings
-    //wifiManager.resetSettings();
-    
-    wifiManager.autoConnect("KoolbreezeSensor");
 
-    //if you get here you have connected to the WiFi
-    Serial.println("connected...yeey :)");
-    
-    setupAlphaNumeric();
-    setupBme280();
-    
+
+double c2f (double c) {
+	return 1.8 * c + 32;
 }
 
-void loop() {
-  readValues();  
-  // sendToDisp("temp", temp);
-  sendToDisp("pres", pres, "h");
-  delay(5000);
-  sendToDisp("temp", temp, "f");
-  delay(5000);
-  sendToDisp("humd", humd, "%");
-  delay(5000);
+void readValues() {
+  temp = c2f(bme.readTemperature());
+  humd = bme.readHumidity();
+  pres = bme.readPressure() * 0.000295300;
+
+  Serial.print("Temperature = ");
+  Serial.print(temp);
+  Serial.println(" *F");
+
+  Serial.print("Pressure = ");
+
+  Serial.print(pres);
+  Serial.println(" hPa");
+
+  Serial.print("Humidity = ");
+  Serial.print(humd);
+  Serial.println(" %");
+
+  Serial.println();
+
+
 }
+
 
 void sendToDisp(const char name[], double value, const char unit[]) {
   alpha4.writeDigitAscii(0, name[0]);
@@ -65,14 +67,14 @@ void sendToDisp(const char name[], double value, const char unit[]) {
   alpha4.writeDigitAscii(3, name[3]);
   alpha4.writeDisplay();
   delay(1000);
-  
+
   int numOfChars = 4;
   numOfChars = (double)((int)value) == value ? 4 : 3;
   // numOfChars = (value % 1 == 0) ? 5 : 4;
-  
+
   char buffer[8] = "";
   dtostrf(value, numOfChars, 2, buffer);
-  
+
   bool dec0 = false;
   bool dec1 = false;
   bool dec2 = false;
@@ -104,6 +106,7 @@ void sendToDisp(const char name[], double value, const char unit[]) {
   delay(5000);
 }
 
+
 void setupAlphaNumeric() {
   alpha4.begin(0x70);
   alpha4.setBrightness(2);
@@ -133,30 +136,32 @@ void setupBme280() {
 }
 
 
-void readValues() {
-  temp = c2f(bme.readTemperature());
-  humd = bme.readHumidity();
-  pres = bme.readPressure() * 0.000295300;
-  
-  Serial.print("Temperature = ");
-  Serial.print(temp);
-  Serial.println(" *F");
 
-  Serial.print("Pressure = ");
 
-  Serial.print(pres);
-  Serial.println(" hPa");
+void setup() {
+    // put your setup code here, to run once:
+    Serial.begin(115200);
+    WiFiManager wifiManager;
+    //reset saved settings
+    //wifiManager.resetSettings();
 
-  Serial.print("Humidity = ");
-  Serial.print(humd);
-  Serial.println(" %");
+    wifiManager.autoConnect("KoolbreezeSensor");
 
-  Serial.println();
-  
-  
+    //if you get here you have connected to the WiFi
+    Serial.println("connected...yeey :)");
+
+    setupAlphaNumeric();
+    setupBme280();
+
 }
 
-
-double c2f (double c) {
-	return 1.8 * c + 32;
+void loop() {
+  readValues();
+  // sendToDisp("temp", temp);
+  sendToDisp("pres", pres, "h");
+  delay(5000);
+  sendToDisp("temp", temp, "f");
+  delay(5000);
+  sendToDisp("humd", humd, "%");
+  delay(5000);
 }
