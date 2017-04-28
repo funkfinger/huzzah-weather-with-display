@@ -17,6 +17,10 @@
 #include <Adafruit_GFX.h>
 #include "Adafruit_LEDBackpack.h"
 
+#include <ThingSpeak.h>
+
+#include "settings.h"
+
 
 // Adafruit alphanumeric LED Feather Wing...
 Adafruit_AlphaNum4 alpha4 = Adafruit_AlphaNum4();
@@ -25,10 +29,13 @@ Adafruit_AlphaNum4 alpha4 = Adafruit_AlphaNum4();
 #define SEALEVELPRESSURE_HPA (1013.25)
 Adafruit_BME280 bme; // I2C
 
+WiFiClient client;
 
-double temp;
-double humd;
-double pres;
+
+
+float temp;
+float humd;
+float pres;
 
 
 
@@ -153,7 +160,12 @@ void setup() {
     setupAlphaNumeric();
     setupBme280();
 
+    ThingSpeak.begin(client);
+
+
 }
+
+int sendToThingSpeak = 0;
 
 void loop() {
   readValues();
@@ -164,4 +176,19 @@ void loop() {
   delay(5000);
   sendToDisp("humd", humd, "%");
   delay(5000);
+
+  if(sendToThingSpeak == 0) {
+    Serial.println("sending to ThingSpeak - temp:" + String(temp, 2));
+
+    ThingSpeak.setField(1,temp);
+    ThingSpeak.setField(2,pres);
+    ThingSpeak.setField(3,humd);
+    ThingSpeak.writeFields(SETTINGS_THINGSPEAK_CHANNEL, SETTINGS_THINGSPEAK_KEY);
+    sendToThingSpeak = 4;
+  }
+  else {
+    sendToThingSpeak--;
+  }
+
+
 }
