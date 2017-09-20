@@ -32,27 +32,16 @@ Adafruit_BME280 bme; // I2C
 
 WiFiClient client;
 
-double temp;
-double humd;
-double pres;
 
-void setup() {
-    // put your setup code here, to run once:
-    Serial.begin(115200);
-    WiFiManager wifiManager;
-    //reset saved settings
-    //wifiManager.resetSettings();
-    
-    wifiManager.autoConnect("KoolbreezeSensor");
 
     //if you get here you have connected to the WiFi
     Serial.println("connected...yeey :)");
-    
+
     setupAlphaNumeric();
     setupBme280();
     // setupOta();
-    
-    
+
+
     ThingSpeak.begin(client);
 }
 
@@ -66,8 +55,8 @@ void loop() {
     readTimes = 4;
   }
   readTimes--;
-  
-  
+
+
   // sendToDisp("temp", temp);
   sendToDisp("pres", pres, "h");
   delay(5000);
@@ -77,6 +66,7 @@ void loop() {
   delay(5000);
 }
 
+
 void sendToDisp(const char name[], double value, const char unit[]) {
   alpha4.writeDigitAscii(0, name[0]);
   alpha4.writeDigitAscii(1, name[1]);
@@ -84,14 +74,14 @@ void sendToDisp(const char name[], double value, const char unit[]) {
   alpha4.writeDigitAscii(3, name[3]);
   alpha4.writeDisplay();
   delay(1000);
-  
+
   int numOfChars = 4;
   numOfChars = (double)((int)value) == value ? 4 : 3;
   // numOfChars = (value % 1 == 0) ? 5 : 4;
-  
+
   char buffer[8] = "";
   dtostrf(value, numOfChars, 2, buffer);
-  
+
   bool dec0 = false;
   bool dec1 = false;
   bool dec2 = false;
@@ -122,6 +112,7 @@ void sendToDisp(const char name[], double value, const char unit[]) {
   alpha4.writeDisplay();
   // delay(5000);
 }
+
 
 void setupAlphaNumeric() {
   alpha4.begin(0x70);
@@ -162,15 +153,15 @@ void setupOta() {
     // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
     Serial.println("Start updating " + type);
   });
-  
+
   ArduinoOTA.onEnd([]() {
     Serial.println("\nEnd");
   });
-  
+
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
   });
-  
+
   ArduinoOTA.onError([](ota_error_t error) {
     Serial.printf("Error[%u]: ", error);
     if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
@@ -179,7 +170,7 @@ void setupOta() {
     else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
     else if (error == OTA_END_ERROR) Serial.println("End Failed");
   });
-  
+
   ArduinoOTA.begin();
   Serial.println("Ready");
   Serial.print("IP address: ");
@@ -187,27 +178,26 @@ void setupOta() {
 
 }
 
-void readValues() {
-  temp = c2f(bme.readTemperature());
-  humd = bme.readHumidity();
-  pres = bme.readPressure() * 0.000295300;
-  
-  Serial.print("Temperature = ");
-  Serial.print(temp);
-  Serial.println(" *F");
 
-  Serial.print("Pressure = ");
 
-  Serial.print(pres);
-  Serial.println(" hPa");
+void setup() {
+    // put your setup code here, to run once:
+    Serial.begin(115200);
+    WiFiManager wifiManager;
+    //reset saved settings
+    //wifiManager.resetSettings();
 
-  Serial.print("Humidity = ");
-  Serial.print(humd);
-  Serial.println(" %");
+    wifiManager.autoConnect("KoolbreezeSensor");
 
-  Serial.println();
-  
-  
+    //if you get here you have connected to the WiFi
+    Serial.println("connected...yeey :)");
+
+    setupAlphaNumeric();
+    setupBme280();
+
+    ThingSpeak.begin(client);
+
+
 }
 
 void postValues(void) {
@@ -218,6 +208,28 @@ void postValues(void) {
   ThingSpeak.writeFields(SETTINGS_THINGSPEAK_CHANNEL, SETTINGS_THINGSPEAK_KEY);
 }
 
-double c2f (double c) {
-	return 1.8 * c + 32;
+void loop() {
+  readValues();
+  // sendToDisp("temp", temp);
+  sendToDisp("pres", pres, "h");
+  delay(5000);
+  sendToDisp("temp", temp, "f");
+  delay(5000);
+  sendToDisp("humd", humd, "%");
+  delay(5000);
+
+  if(sendToThingSpeak == 0) {
+    Serial.println("sending to ThingSpeak - temp:" + String(temp, 2));
+
+    ThingSpeak.setField(1,temp);
+    ThingSpeak.setField(2,pres);
+    ThingSpeak.setField(3,humd);
+    ThingSpeak.writeFields(SETTINGS_THINGSPEAK_CHANNEL, SETTINGS_THINGSPEAK_KEY);
+    sendToThingSpeak = 4;
+  }
+  else {
+    sendToThingSpeak--;
+  }
+
+
 }
