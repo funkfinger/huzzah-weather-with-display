@@ -32,3 +32,5 @@
 .env
 settings.h
 
+.clang_complete
+.gcc-flags.json

@@ -1,13 +1,14 @@
-#include <Arduino.h>
+// #include <Arduino.h>
 
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
 
-//needed for library
+#include <WiFiUdp.h>
+#include <ESP8266mDNS.h>
+#include <ArduinoOTA.h>
+
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
-
-
 
 #include <Wire.h>
 #include <SPI.h>
@@ -17,6 +18,10 @@
 #include <Adafruit_GFX.h>
 #include "Adafruit_LEDBackpack.h"
 
+#include <ThingSpeak.h>
+
+#include "settings.h"
+
 
 // Adafruit alphanumeric LED Feather Wing...
 Adafruit_AlphaNum4 alpha4 = Adafruit_AlphaNum4();
@@ -25,6 +30,7 @@ Adafruit_AlphaNum4 alpha4 = Adafruit_AlphaNum4();
 #define SEALEVELPRESSURE_HPA (1013.25)
 Adafruit_BME280 bme; // I2C
 
+WiFiClient client;
 
 double temp;
 double humd;
@@ -44,11 +50,24 @@ void setup() {
     
     setupAlphaNumeric();
     setupBme280();
+    // setupOta();
     
+    
+    ThingSpeak.begin(client);
 }
 
+int readTimes = 0;
+
 void loop() {
-  readValues();  
+  // ArduinoOTA.handle();
+  readValues();
+  if(readTimes == 0) {
+    postValues();
+    readTimes = 4;
+  }
+  readTimes--;
+  
+  
   // sendToDisp("temp", temp);
   sendToDisp("pres", pres, "h");
   delay(5000);
@@ -101,7 +120,7 @@ void sendToDisp(const char name[], double value, const char unit[]) {
   alpha4.writeDigitAscii(2, buffer[2], dec2);
   alpha4.writeDigitAscii(3, unit[0]);
   alpha4.writeDisplay();
-  delay(5000);
+  // delay(5000);
 }
 
 void setupAlphaNumeric() {
@@ -132,6 +151,41 @@ void setupBme280() {
   }
 }
 
+void setupOta() {
+  ArduinoOTA.onStart([]() {
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH)
+      type = "sketch";
+    else // U_SPIFFS
+      type = "filesystem";
+
+    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+    Serial.println("Start updating " + type);
+  });
+  
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+  });
+  
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+  
+  ArduinoOTA.begin();
+  Serial.println("Ready");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+}
 
 void readValues() {
   temp = c2f(bme.readTemperature());
@@ -156,6 +210,13 @@ void readValues() {
   
 }
 
+void postValues(void) {
+  Serial.println("sending to ThingSpeak...");
+  ThingSpeak.setField(1, (float) temp);
+  ThingSpeak.setField(2, (float) pres);
+  ThingSpeak.setField(3, (float) humd);
+  ThingSpeak.writeFields(SETTINGS_THINGSPEAK_CHANNEL, SETTINGS_THINGSPEAK_KEY);
+}
 
 double c2f (double c) {
 	return 1.8 * c + 32;
